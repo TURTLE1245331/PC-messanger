@@ -1,0 +1,80 @@
+<!DOCTYPE html>
+<html lang="de">
+
+<head>
+    <meta charset="UTF-8">
+    <title>Live Terminal</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+
+<body>
+
+    <div id="login-overlay">
+        <div class="login-box">
+            <h2 style="margin:0">Anmeldung</h2>
+            <input type="text" id="username" placeholder="BENUTZERNAME">
+            <input type="password" id="password" placeholder="PASSWORT">
+            <button onclick="checkLogin()">LOGIN</button>
+            <div id="error-msg">Anmeldung fehlgeschlagen</div>
+        </div>
+    </div>
+
+    <div id="header">RICHARD v1.0</div>
+    <div id="chat"></div>
+
+    <script>
+        let currentIdx = 0;
+        let savedUser = "";
+        let savedPass = "";
+        const chatDiv = document.getElementById('chat');
+
+        async function checkLogin() {
+            savedUser = document.getElementById('username').value;
+            savedPass = document.getElementById('password').value;
+            const success = await updateChat();
+            if (success) {
+                document.getElementById('login-overlay').style.display = "none";
+                setInterval(updateChat, 300); // Polling startet erst nach Login
+            } else {
+                document.getElementById('error-msg').style.display = "block";
+            }
+        }
+
+        async function updateChat() {
+            try {
+                const response = await fetch(`/get?last_id=${currentIdx}`, {
+                    headers: { "X-User": savedUser, "X-Pass": savedPass }
+                });
+
+                if (response.status === 401) return false;
+                const data = await response.json();
+
+                // Nachrichten verarbeiten
+                data.messages.forEach(m => {
+                    if (m.text === "__CLEAR__") {
+                        chatDiv.innerHTML = ""; // Website leeren
+                        currentIdx = 0; // Index auf Null zurücksetzen
+                        return;
+                    }
+
+                    const el = document.createElement('div');
+                    el.className = 'msg';
+                    el.textContent = `> ${m.text}`;
+                    chatDiv.appendChild(el);
+                    chatDiv.scrollTop = chatDiv.scrollHeight;
+                });
+
+                // Den Index auf den neuesten Stand vom Server setzen
+                currentIdx = data.total;
+                return true;
+            } catch (e) { return false; }
+        }
+
+        // Enter-Taste für Login
+        document.getElementById('password').addEventListener('keypress', (e) => {
+            if (e.key === 'Enter') checkLogin();
+        });
+    </script>
+</body>
+
+</html>
