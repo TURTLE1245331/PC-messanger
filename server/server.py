@@ -22,13 +22,17 @@ DB_PATH = "richard.db"
 
 app = FastAPI()
 
+# BASE_DIR bestimmen
+BASE_DIR = os.path.dirname(os.path.abspath(__file__))
+IMG_DIR = os.path.join(BASE_DIR, "img")
+
 # Verzeichnis für Bilder erstellen & mounten
-if not os.path.exists("img"):
-    os.makedirs("img")
-app.mount("/img", StaticFiles(directory="img"), name="img")
+if not os.path.exists(IMG_DIR):
+    os.makedirs(IMG_DIR)
+app.mount("/img", StaticFiles(directory=IMG_DIR), name="img")
 
 # Jinja2 Setup
-env = Environment(loader=FileSystemLoader("."))
+env = Environment(loader=FileSystemLoader(BASE_DIR))
 
 # --- VERSCHLÜSSELUNGS-LOGIK ---
 def get_cipher():
@@ -50,6 +54,18 @@ def init_db():
     cursor = conn.cursor()
     cursor.execute('''CREATE TABLE IF NOT EXISTS users 
                       (username TEXT PRIMARY KEY, password_hash TEXT)''')
+    try:
+        cursor.execute("ALTER TABLE users ADD COLUMN chat_bg TEXT")
+    except sqlite3.OperationalError:
+        pass
+    try:
+        cursor.execute("ALTER TABLE users ADD COLUMN accent_color TEXT")
+    except sqlite3.OperationalError:
+        pass
+    try:
+        cursor.execute("ALTER TABLE users ADD COLUMN transparency INTEGER")
+    except sqlite3.OperationalError:
+        pass
     cursor.execute('''CREATE TABLE IF NOT EXISTS messages 
                       (id INTEGER PRIMARY KEY AUTOINCREMENT, content TEXT)''')
     conn.commit()
@@ -124,6 +140,160 @@ async def register(request: Request):
     except sqlite3.IntegrityError:
         raise HTTPException(status_code=400, detail="Nutzername vergeben")
 
+@app.post("/upload_bg")
+async def upload_bg(request: Request):
+    data = await request.json()
+    bg_data = data.get("bg", "")
+    user, pw = request.headers.get("X-User"), request.headers.get("X-Pass")
+    
+    is_valid = False
+    if user and pw:
+        conn = sqlite3.connect(DB_PATH)
+        res = conn.execute("SELECT password_hash FROM users WHERE username=?", (user,)).fetchone()
+        if res and bcrypt.checkpw(pw.encode(), res[0].encode()):
+            is_valid = True
+            conn.execute("UPDATE users SET chat_bg=? WHERE username=?", (bg_data, user))
+            conn.commit()
+        conn.close()
+
+    return {"status": "ok"}
+
+@app.post("/delete_account")
+async def delete_account(request: Request):
+    user, pw = request.headers.get("X-User"), request.headers.get("X-Pass")
+    if not user or not pw or user == "Admin":
+        raise HTTPException(status_code=401)
+        
+    is_valid = False
+    conn = sqlite3.connect(DB_PATH)
+    res = conn.execute("SELECT password_hash FROM users WHERE username=?", (user,)).fetchone()
+    if res and bcrypt.checkpw(pw.encode(), res[0].encode()):
+        is_valid = True
+        conn.execute("DELETE FROM users WHERE username=?", (user,))
+        conn.commit()
+    conn.close()
+
+    return {"status": "ok"}
+
+@app.post("/reset_bg")
+async def reset_bg(request: Request):
+    user, pw = request.headers.get("X-User"), request.headers.get("X-Pass")
+    if not user or not pw:
+        raise HTTPException(status_code=401)
+        
+    is_valid = False
+    conn = sqlite3.connect(DB_PATH)
+    res = conn.execute("SELECT password_hash FROM users WHERE username=?", (user,)).fetchone()
+    if res and bcrypt.checkpw(pw.encode(), res[0].encode()):
+        is_valid = True
+        conn.execute("UPDATE users SET chat_bg = NULL WHERE username=?", (user,))
+        conn.commit()
+    conn.close()
+
+    return {"status": "ok"}
+
+@app.post("/change_password")
+async def change_password(request: Request):
+    user, pw = request.headers.get("X-User"), request.headers.get("X-Pass")
+    data = await request.json()
+    new_pw = data.get("new_password")
+    
+    if not user or not pw or not new_pw or user == "Admin":
+        raise HTTPException(status_code=400)
+        
+    is_valid = False
+    conn = sqlite3.connect(DB_PATH)
+    res = conn.execute("SELECT password_hash FROM users WHERE username=?", (user,)).fetchone()
+    if res and bcrypt.checkpw(pw.encode(), res[0].encode()):
+        is_valid = True
+        new_hash = bcrypt.hashpw(new_pw.encode(), bcrypt.gensalt()).decode()
+        conn.execute("UPDATE users SET password_hash = ? WHERE username=?", (new_hash, user))
+        conn.commit()
+    conn.close()
+
+    if not is_valid:
+        raise HTTPException(status_code=401)
+    return {"status": "ok"}
+
+@app.post("/change_username")
+async def change_username(request: Request):
+    user, pw = request.headers.get("X-User"), request.headers.get("X-Pass")
+    data = await request.json()
+    new_name = data.get("new_username")
+    
+    if not user or not pw or not new_name or user == "Admin":
+        raise HTTPException(status_code=400)
+    
+    # Prüfen ob Name existiert
+    conn = sqlite3.connect(DB_PATH)
+    exists = conn.execute("SELECT 1 FROM users WHERE username=?", (new_name,)).fetchone()
+    if exists:
+        conn.close()
+        return {"status": "error", "message": "Name bereits vergeben"}
+
+    is_valid = False
+    res = conn.execute("SELECT password_hash FROM users WHERE username=?", (user,)).fetchone()
+    if res and bcrypt.checkpw(pw.encode(), res[0].encode()):
+        is_valid = True
+        conn.execute("UPDATE users SET username = ? WHERE username=?", (new_name, user))
+        conn.commit()
+    conn.close()
+
+    if not is_valid:
+        raise HTTPException(status_code=401)
+    return {"status": "ok", "new_name": new_name}
+
+@app.get("/get_stats")
+async def get_stats():
+    conn = sqlite3.connect(DB_PATH)
+    msg_count = conn.execute("SELECT COUNT(*) FROM messages").fetchone()[0]
+    user_count = conn.execute("SELECT COUNT(*) FROM users").fetchone()[0]
+    conn.close()
+    return {"messages": msg_count, "users": user_count}
+
+@app.get("/get_user_settings")
+async def get_user_settings(request: Request):
+    user, pw = request.headers.get("X-User"), request.headers.get("X-Pass")
+    settings = {"bg": None, "accent": "#38bdf8", "transparency": 60}
+    if user and pw:
+        try:
+            conn = sqlite3.connect(DB_PATH)
+            res = conn.execute("SELECT password_hash, chat_bg, accent_color, transparency FROM users WHERE username=?", (user,)).fetchone()
+            conn.close()
+            if res and bcrypt.checkpw(pw.encode(), res[0].encode()):
+                settings["bg"] = res[1]
+                if res[2]: settings["accent"] = res[2]
+                if res[3] is not None: settings["transparency"] = res[3]
+        except Exception:
+            pass
+    return settings
+
+@app.post("/update_design")
+async def update_design(request: Request):
+    user, pw = request.headers.get("X-User"), request.headers.get("X-Pass")
+    data = await request.json()
+    accent = data.get("accent")
+    trans = data.get("transparency")
+    
+    if not user or not pw:
+        raise HTTPException(status_code=400)
+        
+    is_valid = False
+    conn = sqlite3.connect(DB_PATH)
+    res = conn.execute("SELECT password_hash FROM users WHERE username=?", (user,)).fetchone()
+    if res and bcrypt.checkpw(pw.encode(), res[0].encode()):
+        is_valid = True
+        if accent:
+            conn.execute("UPDATE users SET accent_color = ? WHERE username=?", (accent, user))
+        if trans is not None:
+            conn.execute("UPDATE users SET transparency = ? WHERE username=?", (trans, user))
+        conn.commit()
+    conn.close()
+
+    if not is_valid:
+        raise HTTPException(status_code=401)
+    return {"status": "ok"}
+
 @app.get("/get")
 async def get_msgs(request: Request, last_id: int = 0):
     user, pw = request.headers.get("X-User"), request.headers.get("X-Pass")
@@ -132,11 +302,14 @@ async def get_msgs(request: Request, last_id: int = 0):
     if user == "Admin" and pw == ADMIN_KEY:
         is_valid = True
     elif user and pw:
-        conn = sqlite3.connect(DB_PATH)
-        res = conn.execute("SELECT password_hash FROM users WHERE username=?", (user,)).fetchone()
-        conn.close()
-        if res and bcrypt.checkpw(pw.encode(), res[0].encode()):
-            is_valid = True
+        try:
+            conn = sqlite3.connect(DB_PATH)
+            res = conn.execute("SELECT password_hash FROM users WHERE username=?", (user,)).fetchone()
+            conn.close()
+            if res and bcrypt.checkpw(pw.encode(), res[0].encode()):
+                is_valid = True
+        except Exception:
+            pass
 
     if not is_valid:
         raise HTTPException(status_code=401)
@@ -146,14 +319,18 @@ async def get_msgs(request: Request, last_id: int = 0):
 
 @app.post("/send")
 async def send_msg(request: Request):
+    user, pw = request.headers.get("X-User"), request.headers.get("X-Pass")
     data = await request.json()
     text = data.get("text", "").strip()
 
-    # REMOTE COMMAND: CLEAR
+    # REMOTE COMMAND: CLEAR (Nur Admin!)
     if text.lower() == "clear":
-        clear_database()
-        print("RICHARD > Datenbank via API (Remote) geleert.")
-        return {"status": "ok", "action": "cleared"}
+        if user == "Admin" and pw == ADMIN_KEY:
+            clear_database()
+            print("RICHARD > Datenbank via API (Remote) geleert.")
+            return {"status": "ok", "action": "cleared"}
+        else:
+            raise HTTPException(status_code=403)
 
     save_message(text)
     return {"status": "ok"}

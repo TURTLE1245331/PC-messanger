@@ -4,212 +4,113 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>RICHARD v3.1</title>
-    <style>
-        @import url("https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;700&display=swap");
-
-        /* RESET */
-        * {
-            box-sizing: border-box;
-            margin: 0;
-            padding: 0;
-        }
-
-        :root {
-            --glass-bg: rgba(15, 23, 42, 0.6);
-            --glass-border: rgba(255, 255, 255, 0.1);
-            --primary-color: #38bdf8;
-            --primary-glow: rgba(56, 189, 248, 0.3);
-            --admin-color: #fbbf24;
-        }
-
-        body {
-            background: url("img/b.png") no-repeat center center fixed;
-            background-size: cover;
-            display: flex;
-            flex-direction: column;
-            height: 100vh;
-            color: #f8fafc;
-            font-family: 'Outfit', sans-serif;
-            overflow: hidden;
-        }
-
-        /* --- LOGIN OVERLAY --- */
-        #login-overlay {
-            position: fixed;
-            inset: 0;
-            background: rgba(2, 6, 23, 0.85);
-            backdrop-filter: blur(15px);
-            display: flex;
-            justify-content: center;
-            align-items: center;
-            z-index: 1000;
-            transition: opacity 0.5s ease;
-        }
-
-        .login-box {
-            background: var(--glass-bg);
-            border: 1px solid var(--glass-border);
-            border-radius: 24px;
-            padding: 40px;
-            width: 90%;
-            max-width: 400px;
-            text-align: center;
-            box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.5);
-        }
-
-        h2 {
-            margin-bottom: 25px;
-            letter-spacing: 0.3rem;
-            color: var(--primary-color);
-            text-transform: uppercase;
-        }
-
-        /* --- LAYOUT --- */
-        #header {
-            position: relative;
-            background: var(--glass-bg);
-            backdrop-filter: blur(10px);
-            padding: 20px;
-            border-bottom: 1px solid var(--glass-border);
-            text-align: center;
-            font-weight: 700;
-            letter-spacing: 0.2rem;
-            flex-shrink: 0;
-            z-index: 10;
-        }
-
-        #logout-btn {
-            position: absolute;
-            right: 20px;
-            top: 50%;
-            transform: translateY(-50%);
-            background: rgba(248, 113, 113, 0.2);
-            border: 1px solid rgba(248, 113, 113, 0.4);
-            padding: 8px 15px;
-            font-size: 0.7rem;
-            color: #f87171;
-            cursor: pointer;
-            border-radius: 8px;
-        }
-
-        #chat {
-            flex-grow: 1;
-            overflow-y: auto;
-            padding: 20px;
-            display: flex;
-            flex-direction: column;
-            gap: 12px;
-            scroll-behavior: smooth;
-        }
-
-        #input-area {
-            background: var(--glass-bg);
-            backdrop-filter: blur(20px);
-            padding: 15px 20px;
-            border-top: 1px solid var(--glass-border);
-            display: flex;
-            gap: 10px;
-            flex-shrink: 0;
-        }
-
-        /* --- ELEMENTS --- */
-        .msg {
-            align-self: flex-start;
-            padding: 12px 18px;
-            background: rgba(255, 255, 255, 0.05);
-            border: 1px solid var(--glass-border);
-            border-radius: 16px;
-            border-bottom-left-radius: 2px;
-            max-width: 80%;
-            word-wrap: break-word;
-            animation: msgIn 0.3s ease-out;
-        }
-
-        .msg-admin {
-            border-color: var(--admin-color);
-            box-shadow: 0 0 10px rgba(251, 191, 36, 0.15);
-        }
-
-        @keyframes msgIn {
-            from {
-                opacity: 0;
-                transform: translateY(10px);
-            }
-
-            to {
-                opacity: 1;
-                transform: translateY(0);
-            }
-        }
-
-        input {
-            background: rgba(0, 0, 0, 0.3);
-            border: 1px solid var(--glass-border);
-            border-radius: 12px;
-            padding: 14px;
-            color: white;
-            font-family: inherit;
-            outline: none;
-            transition: 0.3s;
-        }
-
-        #user-input {
-            flex-grow: 1;
-        }
-
-        input:focus {
-            border-color: var(--primary-color);
-        }
-
-        button {
-            background: var(--primary-color);
-            border: none;
-            border-radius: 12px;
-            color: white;
-            padding: 12px 20px;
-            font-weight: 700;
-            cursor: pointer;
-            transition: 0.3s;
-            text-transform: uppercase;
-        }
-
-        button:hover {
-            box-shadow: 0 0 20px var(--primary-glow);
-            filter: brightness(1.1);
-            transform: translateY(-1px);
-        }
-
-        #error-msg {
-            color: #f87171;
-            margin-top: 15px;
-            display: none;
-            font-size: 0.9rem;
-        }
-    </style>
+    <title>RICHARD v3.1 | Secure Messenger</title>
+    <link rel="icon" href="img/icon.png">
+    <link rel="stylesheet" href="style.css">
+    <script src="https://unpkg.com/lucide@latest"></script>
 </head>
 
 <body>
 
-    <div id="login-overlay">
+    <div id="login-overlay" class="visible">
         <div class="login-box">
-            <h2>RICHARD</h2>
+            <h2><img src="img/icon32.png" style="width: 32px; height: 32px;" alt="RICHARD"> RICHARD </h2>
             <input type="text" id="username" placeholder="BENUTZERNAME">
             <input type="password" id="password" placeholder="PASSWORT">
-
-            <button onclick="checkLogin()">LOGIN</button>
-            <button onclick="register()"
-                style="margin-top: 10px; background: transparent; border: 1px solid #38bdf8; color: #38bdf8; box-shadow: none;">
-                REGISTRIEREN
-            </button>
+            <div class="button-group">
+                <button onclick="checkLogin()">LOGIN</button>
+                <button onclick="register()"
+                    style="background: transparent; border: 1px solid #38bdf8; color: #38bdf8; box-shadow: none;">
+                    REGISTRIEREN
+                </button>
+            </div>
 
             <div id="error-msg">Anmeldung fehlgeschlagen!</div>
         </div>
     </div>
 
+    <div id="settings-overlay" style="display: none;">
+        <div class="settings-box">
+            <h2><img src="img/settings32.png" style="width: 32px; height: 32px;" alt="settings">EINSTELLUNGEN</h2>
+            <div class="settings-content">
+                <!-- DESIGN SECTION -->
+                <div class="settings-section">
+                    <h3>Aussehen</h3>
+                    <div class="control-group">
+                        <label>Akzentfarbe:</label>
+                        <input type="color" id="accent-picker" value="#38bdf8" onchange="setAccent(this.value)" style="width: 100%; height: 40px; border-radius: 8px; border: 1px solid var(--glass-border); background: transparent; cursor: pointer;">
+                    </div>
+                    <div class="control-group">
+                        <label>Chat-Transparenz:</label>
+                        <input type="range" min="10" max="95" value="60" oninput="setTransparency(this.value)">
+                    </div>
+                    <div class="control-group">
+                        <label>Hintergrund:</label>
+                        <div class="button-row">
+                            <button onclick="document.getElementById('bg-upload').click()" style="font-size: 0.7rem;">ÄNDERN</button>
+                            <button onclick="resetBg()" style="font-size: 0.7rem; background: rgba(255,255,255,0.1); border-color: var(--glass-border);">RESET</button>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- PROFILE SECTION -->
+                <div id="profile-settings" class="settings-section">
+                    <hr style="border: 0; border-top: 1px solid var(--glass-border); margin: 15px 0;">
+                    <h3>Konto & Sicherheit</h3>
+                    <div class="control-group">
+                        <input type="text" id="new-username" placeholder="Neuer Benutzername" style="font-size: 0.8rem; padding: 10px;">
+                        <button onclick="changeUsername()" style="font-size: 0.7rem; margin-top: 5px; width: 100%;">NAME SPEICHERN</button>
+                    </div>
+                    <div class="control-group" style="margin-top: 15px;">
+                        <input type="password" id="new-password" placeholder="Neues Passwort" style="font-size: 0.8rem; padding: 10px;">
+                        <button onclick="changePassword()" style="font-size: 0.7rem; margin-top: 5px; width: 100%;">PASSWORT ÄNDERN</button>
+                    </div>
+                    <div id="delete-account-container" style="margin-top: 20px;">
+                        <button id="delete-account-btn" onclick="deleteAccount()" style="font-size: 0.7rem; background: rgba(248, 113, 113, 0.1); color: #f87171; border-color: rgba(248, 113, 113, 0.3);">KONTO LÖSCHEN</button>
+                    </div>
+                </div>
+
+                <!-- ADMIN SECTION -->
+                <div id="admin-settings" class="settings-section" style="display: none;">
+                    <hr style="border: 0; border-top: 1px solid var(--glass-border); margin: 15px 0;">
+                    <h3>Admin-Tools</h3>
+                    <div id="server-stats" style="font-size: 0.8rem; color: #94a3b8; margin-bottom: 10px;">
+                        Lade Statistiken...
+                    </div>
+                    <button onclick="clearChat()" style="font-size: 0.7rem; background: #fbbf24; color: #000; width: 100%;">GLOBALEN CHAT LEEREN</button>
+                </div>
+            </div>
+            <button class="close-btn" onclick="closeSettings()" style="margin-top: 20px; background: transparent; border: 1px solid var(--primary-color); color: var(--primary-color);">SCHLIESSEN</button>
+        </div>
+    </div>
+
+    <!-- CUSTOM MODAL (Alert/Confirm) -->
+    <div id="modal-overlay">
+        <div class="modal-box">
+            <div id="modal-icon"></div>
+            <h3 id="modal-title">Titel</h3>
+            <p id="modal-message">Nachricht hier...</p>
+            <div class="modal-buttons">
+                <button id="modal-cancel">ABBRECHEN</button>
+                <button id="modal-confirm">OK</button>
+            </div>
+        </div>
+    </div>
+
     <div id="header">
         RICHARD v3.1
-        <button id="logout-btn" onclick="logout()">LOGOUT</button>
+        <div class="header-controls">
+            <input type="file" id="bg-upload" style="display: none;" accept="image/*" onchange="uploadBg(event)">
+            <button id="bg-btn" onclick="document.getElementById('bg-upload').click()" title="Hintergrund ändern" style="display: flex; align-items: center; gap: 5px;">
+                <i data-lucide="image" style="width: 16px; height: 16px;"></i> HG
+            </button>
+            <button id="settings-btn" onclick="openSettings()" title="Einstellungen">
+                <i data-lucide="settings" style="width: 18px; height: 18px;"></i>
+            </button>
+            <button id="logout-btn" onclick="logout()" title="Abmelden">
+                <i data-lucide="log-out" style="width: 18px; height: 18px;"></i>
+            </button>
+        </div>
     </div>
 
     <div id="chat"></div>
@@ -226,16 +127,85 @@
         let chatInterval = null;
         const chatDiv = document.getElementById('chat');
 
+        // --- CUSTOM MODAL SYSTEM ---
+        function showModal(title, message, type = 'alert') {
+            return new Promise((resolve) => {
+                const overlay = document.getElementById('modal-overlay');
+                const titleEl = document.getElementById('modal-title');
+                const msgEl = document.getElementById('modal-message');
+                const confirmBtn = document.getElementById('modal-confirm');
+                const cancelBtn = document.getElementById('modal-cancel');
+                const iconEl = document.getElementById('modal-icon');
+
+                titleEl.textContent = title;
+                msgEl.textContent = message;
+                
+                // Icon setzen
+                iconEl.innerHTML = type === 'confirm' 
+                    ? '<i data-lucide="help-circle" style="width: 48px; height: 48px;"></i>'
+                    : '<i data-lucide="info" style="width: 48px; height: 48px;"></i>';
+                lucide.createIcons();
+
+                cancelBtn.style.display = type === 'confirm' ? 'block' : 'none';
+                confirmBtn.textContent = type === 'confirm' ? 'BESTÄTIGEN' : 'OK';
+
+                overlay.classList.add('visible');
+
+                const cleanup = (result) => {
+                    overlay.classList.remove('visible');
+                    confirmBtn.onclick = null;
+                    cancelBtn.onclick = null;
+                    resolve(result);
+                };
+
+                confirmBtn.onclick = () => cleanup(true);
+                cancelBtn.onclick = () => cleanup(false);
+            });
+        }
+
+        async function customAlert(title, message) {
+            return showModal(title, message, 'alert');
+        }
+
+        async function customConfirm(title, message) {
+            return showModal(title, message, 'confirm');
+        }
+
+        async function fetchUserSettings() {
+            try {
+                const response = await fetch('/get_user_settings', {
+                    headers: { "X-User": savedUser, "X-Pass": savedPass }
+                });
+                if (response.ok) {
+                    const data = await response.json();
+                    if (data.bg) {
+                        document.body.style.backgroundImage = `url(${data.bg})`;
+                    }
+                    if (data.accent) {
+                        setAccent(data.accent, false); // false = kein sync zum server (da gerade vom server geladen)
+                    }
+                    if (data.transparency !== undefined) {
+                        setTransparency(data.transparency, false);
+                    }
+                }
+            } catch (e) {
+                console.error("Einstellungen-Abruf fehlgeschlagen", e);
+            }
+        }
+
         async function checkLogin() {
             savedUser = document.getElementById('username').value;
             savedPass = document.getElementById('password').value;
 
             const success = await updateChat();
             if (success) {
-                document.getElementById('login-overlay').style.opacity = "0";
+                // Design vom Server laden
+                fetchUserSettings();
+                
+                document.getElementById('login-overlay').classList.remove('visible');
                 setTimeout(() => {
                     document.getElementById('login-overlay').style.display = "none";
-                }, 500);
+                }, 300);
 
                 chatInterval = setInterval(updateChat, 500);
             } else {
@@ -247,7 +217,7 @@
         async function register() {
             const u = document.getElementById('username').value;
             const p = document.getElementById('password').value;
-            if (!u || !p) return alert("Bitte Felder ausfüllen!");
+            if (!u || !p) return customAlert("Fehlende Daten", "Bitte Benutzername und Passwort ausfüllen!");
 
             try {
                 const response = await fetch('/register', {
@@ -255,24 +225,28 @@
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({ username: u, password: p })
                 });
-                if (response.ok) alert("Erfolgreich registriert!");
-                else alert("Fehler: Name eventuell vergeben.");
-            } catch (e) { alert("Server nicht erreichbar"); }
+                if (response.ok) customAlert("Erfolg", "Benutzerkonto wurde erfolgreich erstellt!");
+                else customAlert("Fehler", "Dieser Name ist bereits vergeben.");
+            } catch (e) { customAlert("Fehler", "Server nicht erreichbar."); }
         }
 
-        async function sendMsg() {
+        async function sendMsg(overrideText) {
             const inputField = document.getElementById('user-input');
-            const text = inputField.value.trim();
+            const text = overrideText !== undefined ? overrideText : inputField.value.trim();
             if (!text) return;
 
             try {
                 const response = await fetch('/send', {
                     method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ text: `${savedUser}: ${text}` })
+                    headers: { 
+                        'Content-Type': 'application/json',
+                        'X-User': savedUser,
+                        'X-Pass': savedPass
+                    },
+                    body: JSON.stringify({ text: overrideText !== undefined ? text : `${savedUser}: ${text}` })
                 });
                 if (response.ok) {
-                    inputField.value = "";
+                    if (overrideText === undefined) inputField.value = "";
                     updateChat();
                 }
             } catch (e) { console.error("Senden fehlgeschlagen"); }
@@ -320,6 +294,225 @@
             location.reload();
         }
 
+        function openSettings() {
+            const overlay = document.getElementById('settings-overlay');
+            overlay.style.display = "flex";
+            setTimeout(() => overlay.classList.add('visible'), 10);
+            
+            if (savedUser === "Admin") {
+                document.getElementById('admin-settings').style.display = "block";
+                document.getElementById('profile-settings').style.display = "none";
+                fetchStats();
+            } else {
+                document.getElementById('admin-settings').style.display = "none";
+                document.getElementById('profile-settings').style.display = "block";
+            }
+        }
+
+        async function fetchStats() {
+            try {
+                const response = await fetch('/get_stats');
+                const data = await response.json();
+                document.getElementById('server-stats').innerHTML = 
+                    `Nachrichten: ${data.messages} | Nutzer: ${data.users}`;
+            } catch (e) {}
+        }
+
+        function setAccent(color, sync = true) {
+            document.documentElement.style.setProperty('--primary-color', color);
+            document.documentElement.style.setProperty('--primary-glow', color + '4D'); // 30% alpha
+            
+            const picker = document.getElementById('accent-picker');
+            if (picker) picker.value = color;
+
+            if (sync) {
+                fetch('/update_design', {
+                    method: 'POST',
+                    headers: { "X-User": savedUser, "X-Pass": savedPass, "Content-Type": "application/json" },
+                    body: JSON.stringify({ accent: color })
+                });
+            }
+        }
+
+        function setTransparency(val, sync = true) {
+            const opacity = val / 100;
+            document.documentElement.style.setProperty('--glass-bg-opacity', opacity);
+            
+            const range = document.querySelector('input[type="range"]');
+            if (range) range.value = val;
+
+            if (sync) {
+                fetch('/update_design', {
+                    method: 'POST',
+                    headers: { "X-User": savedUser, "X-Pass": savedPass, "Content-Type": "application/json" },
+                    body: JSON.stringify({ transparency: parseInt(val) })
+                });
+            }
+        }
+        function resetDesignToDefault() {
+            document.documentElement.style.setProperty('--primary-color', '#38bdf8');
+            document.documentElement.style.setProperty('--primary-glow', 'rgba(56, 189, 248, 0.3)');
+            document.documentElement.style.setProperty('--glass-bg-opacity', '0.6');
+            document.body.style.backgroundImage = 'url("img/b.png")'; // Zurück zum Standard-Hintergrund
+        }
+
+        function rgbToHex(rgb) {
+            if (!rgb) return "";
+            let res = rgb.match(/\d+/g);
+            return res ? "#" + res.map(x => parseInt(x).toString(16).padStart(2, '0')).join('') : rgb;
+        }
+
+        async function changeUsername() {
+            const newName = document.getElementById('new-username').value.trim();
+            if (!newName) return;
+            if (savedUser === "Admin") return customAlert("Hinweis", "Der Admin-Account kann nicht umbenannt werden.");
+            
+            try {
+                const response = await fetch('/change_username', {
+                    method: 'POST',
+                    headers: { "X-User": savedUser, "X-Pass": savedPass, "Content-Type": "application/json" },
+                    body: JSON.stringify({ new_username: newName })
+                });
+                const res = await response.json();
+                if (response.ok && res.status !== "error") {
+                    savedUser = res.new_name;
+                    localStorage.setItem('richard_user', savedUser);
+                    await customAlert("Erfolg", "Name geändert! Bitte Seite neu laden.");
+                    location.reload();
+                } else {
+                    customAlert("Fehler", res.message || "Fehler beim Ändern.");
+                }
+            } catch (e) { customAlert("Fehler", "Serverfehler beim Umbenennen."); }
+        }
+
+        async function changePassword() {
+            const newPw = document.getElementById('new-password').value.trim();
+            if (!newPw) return;
+            
+            try {
+                const response = await fetch('/change_password', {
+                    method: 'POST',
+                    headers: { "X-User": savedUser, "X-Pass": savedPass, "Content-Type": "application/json" },
+                    body: JSON.stringify({ new_password: newPw })
+                });
+                if (response.ok) {
+                    savedPass = newPw;
+                    localStorage.setItem('richard_pass', savedPass);
+                    customAlert("Erfolg", "Passwort wurde erfolgreich geändert!");
+                } else {
+                    customAlert("Fehler", "Passwort konnte nicht geändert werden.");
+                }
+            } catch (e) { customAlert("Fehler", "Server nicht erreichbar."); }
+        }
+
+        async function clearChat() {
+            if (await customConfirm("Chat leeren?", "Möchtest du wirklich den gesamten Chat-Verlauf für ALLE Benutzer unwiderruflich löschen?")) {
+                await sendMsg("clear");
+                location.reload();
+            }
+        }
+
+        // Init Design on Load: NUR Variablen laden, aber Standardfarben für Login zeigen
+        window.addEventListener('DOMContentLoaded', () => {
+            resetDesignToDefault(); // Sicherstellen, dass der Login immer im Standard-Look erscheint
+        });
+
+        function closeSettings() {
+            const overlay = document.getElementById('settings-overlay');
+            overlay.classList.remove('visible');
+            setTimeout(() => {
+                overlay.style.display = "none";
+            }, 300);
+        }
+
+        async function deleteAccount() {
+            if (await customConfirm("Konto löschen?", "Bist du absolut sicher? Dein Account und alle Einstellungen gehen verloren!")) {
+                try {
+                    const response = await fetch('/delete_account', {
+                        method: 'POST',
+                        headers: { "X-User": savedUser, "X-Pass": savedPass }
+                    });
+                    if (response.ok) {
+                        await customAlert("Auf Wiedersehen", "Dein Konto wurde erfolgreich gelöscht.");
+                        logout();
+                    } else {
+                        customAlert("Fehler", "Konto konnte nicht gelöscht werden.");
+                    }
+                } catch (e) {
+                    console.error("Delete account error:", e);
+                    customAlert("Fehler", "Verbindung zum Server unterbrochen.");
+                }
+            }
+        }
+
+        async function resetBg() {
+            if (await customConfirm("Hintergrund resetten?", "Möchtest du dein Hintergrundbild auf den Standard zurücksetzen?")) {
+                try {
+                    const response = await fetch('/reset_bg', {
+                        method: 'POST',
+                        headers: { "X-User": savedUser, "X-Pass": savedPass }
+                    });
+                    if (response.ok) {
+                        document.body.style.backgroundImage = "";
+                        customAlert("Erfolg", "Hintergrund wurde zurückgesetzt.");
+                    }
+                } catch (e) {
+                    console.error("Reset BG error:", e);
+                }
+            }
+        }
+
+        function uploadBg(event) {
+            const file = event.target.files[0];
+            if (!file) return;
+
+            const reader = new FileReader();
+            reader.onload = function (e) {
+                const img = new Image();
+                img.onload = async function () {
+                    const canvas = document.createElement('canvas');
+                    const MAX_WIDTH = 1920;
+                    const MAX_HEIGHT = 1080;
+                    let width = img.width;
+                    let height = img.height;
+
+                    if (width > height) {
+                        if (width > MAX_WIDTH) {
+                            height *= MAX_WIDTH / width;
+                            width = MAX_WIDTH;
+                        }
+                    } else {
+                        if (height > MAX_HEIGHT) {
+                            width *= MAX_HEIGHT / height;
+                            height = MAX_HEIGHT;
+                        }
+                    }
+                    canvas.width = width;
+                    canvas.height = height;
+                    const ctx = canvas.getContext('2d');
+                    ctx.drawImage(img, 0, 0, width, height);
+
+                    const dataUrl = canvas.toDataURL('image/jpeg', 0.7);
+
+                    try {
+                        const response = await fetch('/upload_bg', {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/json', "X-User": savedUser, "X-Pass": savedPass },
+                            body: JSON.stringify({ bg: dataUrl })
+                        });
+                        if (response.ok) {
+                            document.body.style.backgroundImage = `url(${dataUrl})`;
+                            customAlert("Erfolg", "Hintergrundbild wurde aktualisiert.");
+                        } else {
+                            customAlert("Fehler", "Fehler beim Hochladen des Bildes.");
+                        }
+                    } catch (err) { console.error("Upload fehlgeschlagen"); }
+                };
+                img.src = e.target.result;
+            };
+            reader.readAsDataURL(file);
+        }
+
         // Tasten-Events
         document.getElementById('password').addEventListener('keypress', (e) => {
             if (e.key === 'Enter') checkLogin();
@@ -327,6 +520,9 @@
         document.getElementById('user-input').addEventListener('keypress', (e) => {
             if (e.key === 'Enter') sendMsg();
         });
+
+        // Lucide Icons initialisieren
+        lucide.createIcons();
     </script>
 </body>
 
