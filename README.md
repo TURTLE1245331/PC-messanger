@@ -18,28 +18,28 @@ Richard was developed with a **Mobile-First approach**. The interface is fully r
 ## ✨ Highlights
 
 * **Automatic IP Detection:** Richard instantly identifies the address (e.g., `192.168.178.50`) under which it is reachable in the network.
-* **True Portability:** The entire system is compiled into **a single `.exe` file**. No installation, no database setups required.
 * **Offline-First:** All data remains within your own network. No cloud, no tracking.
-* **Cross-Platform:** Host on Windows and chat on iOS, Android, Linux, or macOS via any web browser.
-
+* **Cross-Platform:** Host on Windows and chat on Android, Linux, or macOS via any web browser.
+* **DockerCompatibility** use the docker-compose file to get strted in docker.
+* **Many Customization Options** you can choose your oun background on the web version and choose your primary and secondary colors
+* **Privacy Mode** Richard offers you a nice privacy mode wich hied the messages  
 ---
 
 ## 🚀 Quick Start for Users
 
-1.  **Run the EXE:** Open `richard.exe` on your primary computer.
-2.  **Share the Address:** The program will display the local IP address (e.g., `http://192.168.178.50:5000`).
-3.  **Connect:** Enter this address into the browser on your smartphone.
-4.  **Pro Tip:** Select "Add to Home Screen" on your mobile browser to use Richard just like an installed app.
+1.  **Install pip modules** install the required packages in `requirements.txt`
+2.  **REDIS** install redis on your server 
+3.  **Run the python file** Open `server.py` on your primary computer.
+4.  **Share the Address:** type `show ip` and get started quickly
+5.  **Connect:** Enter this address into the browser on your smartphone.
 
 ---
 
+## ⚠️ Notice! this is a early build of RICHARD you may loose data or find many bugs  
+
+
+
+
 ## 🛠 Development & Build Process
+the server build is written using Python
 
-### Project Structure
-
-```text
-.
-├── main.py            # Backend (Flask/Python)
-├── richard.ico        # Application Icon
-├── templates/         # HTML Structure (Responsive)
-└── static/            # CSS Styles & JavaScript Logic
