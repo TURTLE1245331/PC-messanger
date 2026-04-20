@@ -10,7 +10,7 @@ Richard was developed with a **Mobile-First approach**. The interface is fully r
 
 | Chat History | Mobile Navigation |
 | :---: | :---: |
-| ![Mobile Chat](docs/screen_mobile_chat.png) | ![Mobile Menu](docs/screen_mobile_list.png) |
+| !(screenshots/ready.jpg) | !(screenshots/setup.jpg) |
 | *Optimized for thumb interaction* | *Sleek, adaptive design* |
 
 ---
