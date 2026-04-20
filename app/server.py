@@ -1,4 +1,5 @@
 import sqlite3
+import socket
 from contextlib import asynccontextmanager
 import bcrypt
 import logging
@@ -30,6 +31,26 @@ CSS_PATH = "webdata/style.css"
 HTML_PATH = "webdata/index.html"
 IMG_DIR = "webdata/img"
 print("configuration complete")
+
+def get_local_ip():
+    s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+    try:
+        # Verbindung zu einer nicht erreichbaren IP herstellen, um die Standard-Route zu ermitteln
+        s.connect(('10.254.254.254', 1))
+        ip = s.getsockname()[0]
+    except Exception:
+        ip = '127.0.0.1'
+    finally:
+        s.close()
+    return ip
+
+def admin_warning():
+    if ADMIN_KEY == "7588":
+        print("!!PLEASE CHANGE ADMIN KEY IN .env FILE AND REBOOT SERVER!!")
+    else:
+        print("ADMIN KEY OK...")
+        
+admin_warning()
 
 print("initializing redis ...")
 # Redis Initialisierung
@@ -543,6 +564,17 @@ def console_input():
                 print("Beende...")
                 os._exit(0)
 
+            elif cmd == "show ip":
+                hostname = socket.gethostname()
+                ip_address = socket.gethostbyname(hostname)
+                print(f"RICHARD > IP: {ip_address}")
+                print("For more ip infrmation use [ip a] if linux or [ipconfig] if windows")
+                
+
+
+            
+                
+
         except EOFError:
             break
 
@@ -552,3 +584,4 @@ if __name__ == "__main__":
     threading.Thread(target=console_input, daemon=True).start()
     # Webserver starten (Wichtig: host="0.0.0.0" für Docker!)
     uvicorn.run(app, host="0.0.0.0", port=8000, log_config=None)
+    
