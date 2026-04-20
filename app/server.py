@@ -1,4 +1,5 @@
 import sqlite3
+from contextlib import asynccontextmanager
 import bcrypt
 import logging
 import threading
@@ -13,14 +14,42 @@ from cryptography.fernet import Fernet
 from cryptography.hazmat.primitives import hashes
 from cryptography.hazmat.primitives.kdf.pbkdf2 import PBKDF2HMAC
 from dotenv import load_dotenv
-
+import time
+import redis
+import json
+print("loading configuration ...")
 # 1. Konfiguration & Umgebungsvariablen
 load_dotenv()
 ADMIN_KEY = os.getenv("ADMIN_KEY", "7588")
-VERSION = "3.1"
+VERSION = "3.1-canary"
 DB_PATH = "richard.db"
+REDIS_HOST = os.getenv("REDIS_HOST", "localhost")
+REDIS_PORT = int(os.getenv("REDIS_PORT", 6379))
+REDIS_DB = int(os.getenv("REDIS_DB", 0))
+CSS_PATH = "webdata/style.css"
+HTML_PATH = "webdata/index.html"
+IMG_DIR = "webdata/img"
+print("configuration complete")
 
-app = FastAPI()
+print("initializing redis ...")
+# Redis Initialisierung
+try:
+    redis_client = redis.Redis(host=REDIS_HOST, port=REDIS_PORT, db=REDIS_DB, decode_responses=True)
+    redis_client.ping()
+    print(f"RICHARD > Redis verbunden ({REDIS_HOST}:{REDIS_PORT})")
+except Exception as e:
+    print(f"RICHARD > Redis Verbindung fehlgeschlagen: {e}")
+    redis_client = None
+
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    # Startup: Datenbank initialisieren
+    init_db()
+    yield
+    # Shutdown: Nachricht ausgeben
+    print("RICHARD > Shutdown-Prozess gestartet.")
+
+app = FastAPI(lifespan=lifespan)
 
 # BASE_DIR bestimmen
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
@@ -50,22 +79,35 @@ cipher = get_cipher()
 
 # --- DATENBANK FUNKTIONEN ---
 def init_db():
+    print("initializing database ...")
     conn = sqlite3.connect(DB_PATH)
     cursor = conn.cursor()
     cursor.execute('''CREATE TABLE IF NOT EXISTS users 
                       (username TEXT PRIMARY KEY, password_hash TEXT)''')
-    try:
-        cursor.execute("ALTER TABLE users ADD COLUMN chat_bg TEXT")
-    except sqlite3.OperationalError:
-        pass
-    try:
-        cursor.execute("ALTER TABLE users ADD COLUMN accent_color TEXT")
-    except sqlite3.OperationalError:
-        pass
-    try:
-        cursor.execute("ALTER TABLE users ADD COLUMN transparency INTEGER")
-    except sqlite3.OperationalError:
-        pass
+    print("database initialized")
+    # Vorhandene Spalten (Migration)
+    columns = [
+        ("chat_bg", "TEXT"),
+        ("accent_color", "TEXT"),
+        ("transparency", "INTEGER"),
+        ("font_size", "INTEGER"),
+        ("msg_radius", "INTEGER"),
+        ("msg_spacing", "INTEGER"),
+        ("bg_blur", "INTEGER"),
+        ("chat_width", "INTEGER"),
+        ("animations", "INTEGER"),
+        ("timestamps", "INTEGER"),
+        ("autoscroll", "INTEGER"),
+        ("privacy_mode", "INTEGER"),
+        ("sound_enabled", "INTEGER")
+    ]
+    
+    for col_name, col_type in columns:
+        try:
+            cursor.execute(f"ALTER TABLE users ADD COLUMN {col_name} {col_type}")
+        except sqlite3.OperationalError:
+            pass
+            
     cursor.execute('''CREATE TABLE IF NOT EXISTS messages 
                       (id INTEGER PRIMARY KEY AUTOINCREMENT, content TEXT)''')
     conn.commit()
@@ -77,8 +119,22 @@ def save_message(text):
     conn.execute("INSERT INTO messages (content) VALUES (?)", (encrypted_text,))
     conn.commit()
     conn.close()
+    
+    # Redis Integration
+    if redis_client:
+        try:
+            msg_obj = {"text": text}
+            # Als List für schnelles Abrufen (Caching)
+            redis_client.rpush("chat_messages", json.dumps(msg_obj))
+            # Nur die letzten 100 Nachrichten im Cache behalten
+            redis_client.ltrim("chat_messages", -100, -1)
+            # Pub/Sub für Echtzeit-Übertragung
+            redis_client.publish("chat_channel", json.dumps(msg_obj))
+        except Exception as e:
+            print(f"RICHARD > Redis Save-Fehler: {e}")
 
 def clear_database():
+    print("clearing database ...")
     """Löscht alle Nachrichten und setzt den ID-Zähler zurück."""
     try:
         conn = sqlite3.connect(DB_PATH)
@@ -90,8 +146,24 @@ def clear_database():
     except Exception as e:
         print(f"Fehler beim Löschen der DB: {e}")
         return False
+    finally:
+        if redis_client:
+            try:
+                redis_client.delete("chat_messages")
+            except Exception:
+                pass
 
 def get_all_messages():
+    # Zuerst in Redis nachsehen
+    if redis_client:
+        try:
+            cached_msgs = redis_client.lrange("chat_messages", 0, -1)
+            if cached_msgs:
+                return [json.loads(m) for m in cached_msgs]
+        except Exception as e:
+            print(f"RICHARD > Redis Get-Fehler: {e}")
+
+    # Fallback auf SQLite
     conn = sqlite3.connect(DB_PATH)
     rows = conn.execute("SELECT content FROM messages").fetchall()
     conn.close()
@@ -103,6 +175,18 @@ def get_all_messages():
             decrypted.append({"text": msg})
         except Exception:
             decrypted.append({"text": "[Kryptofehler: Nachricht unlesbar]"})
+    
+    # Cache befüllen falls leer
+    if redis_client and decrypted:
+        try:
+            # Nur die letzten 100 in den Cache
+            to_cache = decrypted[-100:]
+            redis_client.delete("chat_messages")
+            for m in to_cache:
+                redis_client.rpush("chat_messages", json.dumps(m))
+        except Exception:
+            pass
+            
     return decrypted
 
 # --- API ENDPUNKTE ---
@@ -110,17 +194,18 @@ def get_all_messages():
 @app.get("/", response_class=HTMLResponse)
 async def read_root(request: Request):
     try:
-        template = env.get_template("index.html")
+        template = env.get_template(HTML_PATH)
         return HTMLResponse(content=template.render(request=request))
     except Exception:
-        if os.path.exists("index.html"):
-            with open("index.html", "r", encoding="utf-8") as f:
+        if os.path.exists(HTML_PATH):
+            with open(HTML_PATH, "r", encoding="utf-8") as f:
                 return HTMLResponse(content=f.read())
         return HTMLResponse(content="<h1>Index.html nicht gefunden</h1>")
-
+        print("html not found check paths...")
 @app.get("/style.css")
 async def get_style():
-    return FileResponse("style.css")
+    return FileResponse(CSS_PATH)
+    print("css not found check paths...")
 
 @app.post("/register")
 async def register(request: Request):
@@ -140,20 +225,49 @@ async def register(request: Request):
     except sqlite3.IntegrityError:
         raise HTTPException(status_code=400, detail="Nutzername vergeben")
 
+
+@app.post("/login")
+async def login(request: Request):
+    user, pw = request.headers.get("X-User"), request.headers.get("X-Pass")
+    if not user or not pw:
+        raise HTTPException(status_code=400, detail="Zugangsdaten fehlen")
+        
+    if user == "Admin" and pw == ADMIN_KEY:
+        return {"status": "ok", "user": "Admin"}
+        
+    conn = sqlite3.connect(DB_PATH)
+    res = conn.execute("SELECT password_hash FROM users WHERE username=?", (user,)).fetchone()
+    conn.close()
+    
+    if res and bcrypt.checkpw(pw.encode(), res[0].encode()):
+        return {"status": "ok", "user": user}
+        
+    raise HTTPException(status_code=401, detail="Falsche Zugangsdaten")
+
 @app.post("/upload_bg")
 async def upload_bg(request: Request):
     data = await request.json()
     bg_data = data.get("bg", "")
     user, pw = request.headers.get("X-User"), request.headers.get("X-Pass")
     
-    is_valid = False
-    if user and pw:
+    if user and pw and bg_data.startswith("data:image"):
         conn = sqlite3.connect(DB_PATH)
         res = conn.execute("SELECT password_hash FROM users WHERE username=?", (user,)).fetchone()
         if res and bcrypt.checkpw(pw.encode(), res[0].encode()):
-            is_valid = True
-            conn.execute("UPDATE users SET chat_bg=? WHERE username=?", (bg_data, user))
-            conn.commit()
+            try:
+                # Bild speichern
+                header, encoded = bg_data.split(",", 1)
+                img_data = base64.b64decode(encoded)
+                filename = f"bg_{user}.jpg"
+                filepath = os.path.join(IMG_DIR, filename)
+                
+                with open(filepath, "wb") as f:
+                    f.write(img_data)
+                
+                conn.execute("UPDATE users SET chat_bg=? WHERE username=?", (filename, user))
+                conn.commit()
+            except Exception as e:
+                print(f"Error saving BG: {e}")
         conn.close()
 
     return {"status": "ok"}
@@ -169,6 +283,11 @@ async def delete_account(request: Request):
     res = conn.execute("SELECT password_hash FROM users WHERE username=?", (user,)).fetchone()
     if res and bcrypt.checkpw(pw.encode(), res[0].encode()):
         is_valid = True
+        # Hintergrund-Datei löschen
+        filepath = os.path.join(IMG_DIR, f"bg_{user}.jpg")
+        if os.path.exists(filepath):
+            os.remove(filepath)
+            
         conn.execute("DELETE FROM users WHERE username=?", (user,))
         conn.commit()
     conn.close()
@@ -186,6 +305,11 @@ async def reset_bg(request: Request):
     res = conn.execute("SELECT password_hash FROM users WHERE username=?", (user,)).fetchone()
     if res and bcrypt.checkpw(pw.encode(), res[0].encode()):
         is_valid = True
+        # Hintergrund-Datei löschen
+        filepath = os.path.join(IMG_DIR, f"bg_{user}.jpg")
+        if os.path.exists(filepath):
+            os.remove(filepath)
+            
         conn.execute("UPDATE users SET chat_bg = NULL WHERE username=?", (user,))
         conn.commit()
     conn.close()
@@ -254,26 +378,52 @@ async def get_stats():
 @app.get("/get_user_settings")
 async def get_user_settings(request: Request):
     user, pw = request.headers.get("X-User"), request.headers.get("X-Pass")
-    settings = {"bg": None, "accent": "#38bdf8", "transparency": 60}
+    settings = {
+        "bg": None, 
+        "accent": "#38bdf8", 
+        "transparency": 60,
+        "font_size": 16,
+        "msg_radius": 16,
+        "msg_spacing": 12,
+        "bg_blur": 0,
+        "chat_width": 100,
+        "animations": 1,
+        "timestamps": 1,
+        "autoscroll": 1,
+        "privacy_mode": 0,
+        "sound_enabled": 1
+    }
     if user and pw:
         try:
             conn = sqlite3.connect(DB_PATH)
-            res = conn.execute("SELECT password_hash, chat_bg, accent_color, transparency FROM users WHERE username=?", (user,)).fetchone()
+            # Alle Spalten abrufen
+            cursor = conn.cursor()
+            cursor.execute("SELECT * FROM users WHERE username=?", (user,))
+            row = cursor.fetchone()
+            names = [description[0] for description in cursor.description]
             conn.close()
-            if res and bcrypt.checkpw(pw.encode(), res[0].encode()):
-                settings["bg"] = res[1]
-                if res[2]: settings["accent"] = res[2]
-                if res[3] is not None: settings["transparency"] = res[3]
-        except Exception:
-            pass
+            
+            if row:
+                user_data = dict(zip(names, row))
+                if bcrypt.checkpw(pw.encode(), user_data["password_hash"].encode()):
+                    if user_data.get("chat_bg"):
+                        settings["bg"] = f"/img/{user_data['chat_bg']}?v={int(time.time())}"
+                    
+                    if user_data.get("accent_color"): settings["accent"] = user_data["accent_color"]
+                    if user_data.get("transparency") is not None: settings["transparency"] = user_data["transparency"]
+                    
+                    # Neue Einstellungen mappen
+                    for key in settings.keys():
+                        if key in user_data and user_data[key] is not None:
+                            settings[key] = user_data[key]
+        except Exception as e:
+            print(f"Error fetching settings: {e}")
     return settings
 
 @app.post("/update_design")
 async def update_design(request: Request):
     user, pw = request.headers.get("X-User"), request.headers.get("X-Pass")
     data = await request.json()
-    accent = data.get("accent")
-    trans = data.get("transparency")
     
     if not user or not pw:
         raise HTTPException(status_code=400)
@@ -283,16 +433,41 @@ async def update_design(request: Request):
     res = conn.execute("SELECT password_hash FROM users WHERE username=?", (user,)).fetchone()
     if res and bcrypt.checkpw(pw.encode(), res[0].encode()):
         is_valid = True
-        if accent:
-            conn.execute("UPDATE users SET accent_color = ? WHERE username=?", (accent, user))
-        if trans is not None:
-            conn.execute("UPDATE users SET transparency = ? WHERE username=?", (trans, user))
+        
+        allowed_keys = [
+            "accent_color", "transparency", "font_size", "msg_radius", 
+            "msg_spacing", "bg_blur", "chat_width", "animations", 
+            "timestamps", "autoscroll", "privacy_mode", "sound_enabled"
+        ]
+        
+        # Mapping von Frontend-Keys zu DB-Keys
+        key_map = {
+            "accent": "accent_color",
+            "transparency": "transparency",
+            "font_size": "font_size",
+            "msg_radius": "msg_radius",
+            "msg_spacing": "msg_spacing",
+            "bg_blur": "bg_blur",
+            "chat_width": "chat_width",
+            "animations": "animations",
+            "timestamps": "timestamps",
+            "autoscroll": "autoscroll",
+            "privacy_mode": "privacy_mode",
+            "sound_enabled": "sound_enabled"
+        }
+        
+        for json_key, db_key in key_map.items():
+            if json_key in data:
+                val = data[json_key]
+                conn.execute(f"UPDATE users SET {db_key} = ? WHERE username=?", (val, user))
+        
         conn.commit()
     conn.close()
 
     if not is_valid:
         raise HTTPException(status_code=401)
     return {"status": "ok"}
+
 
 @app.get("/get")
 async def get_msgs(request: Request, last_id: int = 0):
@@ -373,7 +548,6 @@ def console_input():
 
 # --- START ---
 if __name__ == "__main__":
-    init_db()
     # Konsolen-Thread starten
     threading.Thread(target=console_input, daemon=True).start()
     # Webserver starten (Wichtig: host="0.0.0.0" für Docker!)

@@ -1,0 +1,98 @@
+<!DOCTYPE html>
+<html lang="de">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>RICHARD | Secure Messenger</title>
+    <link rel="icon" href="img/icon.png">
+    <link rel="stylesheet" href="style.css">
+    <script src="https://unpkg.com/lucide@latest"></script>
+</head>
+
+<body>
+
+    <div id="login-overlay">
+        <div class="login-box">
+            <div class="brand">
+                <img src="img/icon32.png" alt="Logo">
+                <h2>RICHARD</h2>
+            </div>
+
+            <div class="input-group">
+                <input type="text" id="username" placeholder="Benutzername">
+                <input type="password" id="password" placeholder="Passwort">
+            </div>
+
+            <div class="button-stack">
+                <button class="btn-primary" onclick="checkLogin()">Anmelden</button>
+                <button class="btn-secondary" onclick="register()">Registrieren</button>
+            </div>
+            <div id="error-msg" style="color: var(--danger); margin-top: 15px; display: none;">Anmeldung fehlgeschlagen.
+            </div>
+        </div>
+    </div>
+
+    <header id="header">
+        <div class="header-left">
+            <img src="img/icon32.png" alt="Logo" class="nav-logo">
+            <span class="status-indicator">● Online</span>
+        </div>
+        <div class="header-right">
+            <button class="btn-icon" onclick="toggleSettings()" style="background: transparent; color: white;">
+                <i data-lucide="settings"></i>
+            </button>
+        </div>
+    </header>
+
+    <main id="chat-container">
+        <div id="chat-messages">
+            <div class="msg msg-other">Willkommen bei RICHARD.</div>
+            <div class="msg msg-me">Hey! Das Design sieht jetzt super aus.</div>
+        </div>
+    </main>
+
+    <footer id="footer">
+        <div class="input-area">
+            <input type="text" id="user-input" placeholder="Nachricht...">
+            <button id="send-btn" onclick="sendMsg()">
+                <i data-lucide="send" size="18"></i>
+            </button>
+        </div>
+    </footer>
+
+    <div id="settings-overlay" style="display: none;">
+        <div class="settings-box">
+            <h2>Einstellungen</h2>
+            <div class="input-group">
+                <button class="btn-secondary" onclick="document.getElementById('bg-upload').click()">
+                    <i data-lucide="image"></i> Hintergrund ändern
+                </button>
+                <input type="file" id="bg-upload" style="display:none" onchange="uploadBG(event)">
+
+                <button class="btn-primary" style="background: var(--danger);" onclick="logout()">
+                    <i data-lucide="log-out"></i> Abmelden
+                </button>
+            </div>
+            <button onclick="toggleSettings()"
+                style="background: transparent; color: var(--text-muted);">Schließen</button>
+        </div>
+    </div>
+
+    <script>
+        // Icons laden
+        lucide.createIcons();
+
+        // Einfache Toggle-Logik für Settings (Platzhalter für dein Script)
+        function toggleSettings() {
+            const s = document.getElementById('settings-overlay');
+            s.style.display = s.style.display === 'none' ? 'flex' : 'none';
+        }
+
+        // Enter-Taste für Login & Chat
+        document.getElementById('password').addEventListener('keypress', e => { if (e.key === 'Enter') checkLogin(); });
+        document.getElementById('user-input').addEventListener('keypress', e => { if (e.key === 'Enter') sendMsg(); });
+    </script>
+</body>
+
+</html>

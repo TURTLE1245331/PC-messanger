@@ -1,0 +1,25 @@
+version: '3.8'
+
+services:
+  messenger:
+    build: .
+    container_name: richard-messenger
+    ports:
+      - "8000:8000"
+    environment:
+      - REDIS_HOST=redis
+      - REDIS_PORT=6379
+      - ADMIN_KEY=7588
+    volumes:
+      - ./server/img:/app/server/img
+      - ./server/richard.db:/app/server/richard.db
+    depends_on:
+      - redis
+    restart: always
+
+  redis:
+    image: redis:latest
+    container_name: richard-redis
+    ports:
+      - "6379:6379"
+    restart: always
