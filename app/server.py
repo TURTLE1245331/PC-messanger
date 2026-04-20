@@ -21,7 +21,7 @@ print("loading configuration ...")
 # 1. Konfiguration & Umgebungsvariablen
 load_dotenv()
 ADMIN_KEY = os.getenv("ADMIN_KEY", "7588")
-VERSION = "3.1-canary"
+VERSION = "3.4-canary"
 DB_PATH = "richard.db"
 REDIS_HOST = os.getenv("REDIS_HOST", "localhost")
 REDIS_PORT = int(os.getenv("REDIS_PORT", 6379))
